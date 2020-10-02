@@ -84,8 +84,8 @@ class Room:
 
         sensations = np.empty((N, self.resolution * self.resolution * 3), dtype=np.int)
         for i, state in enumerate(tqdm(states, desc="Room exploration", mininterval=1)):
-            assert all(-self.size / 2 < state[0:2])\
-                   and all(state[0:2] < self.size / 2), \
+            assert (-self.size / 2 < state[0:2]).all() \
+                   and (state[0:2] < self.size / 2).all(), \
                    "sensor outside of the room"
             # set the camera position
             camera_position = [state[0], state[1], self._camera_height]

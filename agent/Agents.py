@@ -33,36 +33,69 @@ class MobileArm:
         self.segments_length = segments_length
 
     @staticmethod
-    def check_m(m):
+    def check_motor(m):
         assert type(m) is np.ndarray
         assert (-1 <= m).all() and (m <= 1).all(), "motor not in range (-1, 1)"
         if m.ndim == 1:
             m = m.reshape(1, -1)
         return m
 
-    def get_state_from_motor(self, m):
+    def check_shift(self, sh):
+        assert type(sh) is np.ndarray
+        if sh.ndim == 1:
+            sh = sh.reshape(1, -1)
+        assert (-np.sum(self.segments_length) <= sh[:, 0:2]).all()\
+               and (sh[:, 0:2] <= np.sum(self.segments_length)).all(),\
+               "shift[0:2] not in range (-reach, reach)"
+        assert (0 <= sh[:, 2]).all() and (sh[:, 2] <= 2 * np.pi).all(), \
+               "shift[2] not in range (0, 2*pi)"
+        return sh
+
+    def get_state(self, m, shift):
         """Get the position/orientation/aperture of the sensor.
         """
-        m = self.check_m(m)
+        m = self.check_motor(m)
+        shift = self.check_shift(shift)
+        # relative angles
+        rel_a = self.motor_amplitude[:3].reshape(1, 3) * m[:, :3]
+        # update base angle
+        rel_a[:, 0] = rel_a[:, 0] + shift[:, 2]
+        # sensor positions
         x = np.sum(
             np.multiply(
                 self.segments_length,
                 np.cos(
-                    np.cumsum(
-                        self.motor_amplitude[:3].reshape(1, 3) * m[:, :3], axis=1))),
+                    np.cumsum(rel_a, axis=1))),
             axis=1, keepdims=True)
         y = np.sum(
             np.multiply(
                 self.segments_length,
                 np.sin(
-                    np.cumsum(
-                        self.motor_amplitude[:3].reshape(1, 3) * m[:, :3], axis=1))),
+                    np.cumsum(rel_a, axis=1))),
             axis=1, keepdims=True)
-        yaw = np.sum(
-            self.motor_amplitude[:3].reshape(1, 3) * m[:, :3],
-            axis=1, keepdims=True)
+        yaw = np.sum(rel_a[:, :3], axis=1, keepdims=True)
         aperture = self.motor_amplitude[3] / 2 * (m[:, [3]] - 1) + 1
+        # update the position
+        x += shift[:, [0]]
+        y += shift[:, [1]]
         return np.hstack((x, y, yaw, aperture))
+
+    def generate_random_motors(self, k=1):
+        """Draw a set of k random motor commands in [-1, 1]
+        Returns:
+            motors - (k, 3) array
+        """
+        return 2 * np.random.rand(k, self.n_motors) - 1
+
+    def generate_random_shifts(self, k=1):
+        """Draw a set of k random shifts with a max amplitude
+        equal to the arm reach.
+        Returns:
+            shifts - (k, 3) array
+        """
+        xy = np.sum(self.segments_length) * (2 * np.random.rand(k, 2) - 1)
+        a = 2 * np.pi * np.random.rand(k, 1)
+        return np.hstack((xy, a))
 
     def generate_random_states(self, k=1):
         """Draw a set of k randomly selected motor configurations and associated egocentric sensor positions
@@ -71,10 +104,12 @@ class MobileArm:
             states - (k, 2) array
         """
         # draw random motor components in [-1, 1]
-        motors = 2 * np.random.rand(k, self.n_motors) - 1
+        motors = self.generate_random_motors(k)
+        # draw random base shifts
+        shifts = self.generate_random_shifts(k)
         # get the associated egocentric positions
-        states = self.get_state_from_motor(motors)
-        return motors, states
+        states = self.get_state(motors, shifts)
+        return motors, shifts, states
 
     def generate_regular_states(self, resolution=7):
         """Generates a regular grid of motor configurations in the motor space."""
@@ -89,35 +124,41 @@ class MobileArm:
             [coord.reshape(-1) for coord in coordinates]
         ).T
         # get the corresponding positions
-        state_grid = self.get_state_from_motor(motor_grid)
+        state_grid = self.get_state(motor_grid)
         return motor_grid, state_grid
 
-    def display(self, m, new_fig=True):
+    def display(self, m, shift, new_fig=True):
         """Displays the position associated with a motor configuration"""
-        m = self.check_m(m)
+        m = self.check_motor(m)
+        shift = self.check_shift(shift)
+        # relative angles
+        rel_a = self.motor_amplitude[:3].reshape(1, 3) * m[:, :3]
+        # update base angle
+        rel_a[:, 0] = rel_a[:, 0] + shift[:, 2]
         # joints positions
         x = np.cumsum(
             np.multiply(
                 self.segments_length,
                 np.cos(
-                    np.cumsum(self.motor_amplitude[:3].reshape(1, 3) * m[:, :3], axis=1))),
+                    np.cumsum(rel_a, axis=1))),
             axis=1)
         y = np.cumsum(
             np.multiply(
                 self.segments_length,
                 np.sin(
-                    np.cumsum(self.motor_amplitude[:3].reshape(1, 3) * m[:, :3],
-                              axis=1))),
+                    np.cumsum(rel_a, axis=1))),
             axis=1)
 
         # add the agent's base
         x = np.hstack((np.zeros((x.shape[0], 1)), x))
         y = np.hstack((np.zeros((y.shape[0], 1)), y))
 
-        yaw = np.sum(
-            self.motor_amplitude[:3].reshape(1, 3) * m[:, :3],
-            axis=1, keepdims=True)
+        yaw = np.sum(rel_a, axis=1, keepdims=True)
         aperture = self.motor_amplitude[3] / 2 * (m[:, [3]] - 1) + 1
+
+        # update the positions with the shift
+        x += shift[:, [0]]
+        y += shift[:, [1]]
 
         # display the different motor configurations
         if new_fig:

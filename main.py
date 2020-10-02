@@ -27,18 +27,18 @@ def main():
 
     myagent = MobileArm()
     myagent.save("temp")
-    motors, states = myagent.generate_random_states(30)
+    motors, shifts, states = myagent.generate_random_states(30)
 
     sensations = myroom.get_sensations(states)
     print("> sensations: \n", sensations)
 
     fig = plt.figure(figsize=(12, 6))
     ax1, ax2 = fig.subplots(1, 2)
-    for m, s, sta in zip(motors, sensations, states):
+    for m, sh, s in zip(motors, shifts, sensations):
         plt.sca(ax1)
         show_sensation(s, new_fig=False)
         plt.sca(ax2)
-        myagent.display(m, new_fig=False)
+        myagent.display(m, sh, new_fig=False)
         plt.pause(0.15)
     plt.show(block=True)
 
