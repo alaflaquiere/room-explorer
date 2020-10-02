@@ -1,19 +1,46 @@
-from RoomEnvironment.RoomEnvironment import Room
-import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.pyplot as plt
+from environment.RoomEnvironment import Room
+from agent.Agents import MobileArm
+
+
+def show_sensation(s, new_fig=True, block=False):
+    assert type(s) is np.ndarray
+    if s.ndim == 1:
+        resolution = int(np.sqrt(s.shape[0] / 3))
+        s = s.reshape(resolution, resolution, 3)
+    if new_fig:
+        plt.figure(figsize=(6, 6))
+    else:
+        plt.cla()
+    plt.tight_layout()
+    plt.imshow(s, interpolation="none")
+    plt.axis("off")
+    plt.show(block=block)
 
 
 def main():
-    myroom = Room()
-
+    myroom = Room(resolution=16)
     image = myroom.overview()
-    plt.imshow(image)
-    plt.show()
+    show_sensation(image)
+    myroom.save("temp")
 
-    myroom.save("saved_environment")
+    myagent = MobileArm()
+    myagent.save("temp")
+    motors, states = myagent.generate_random_states(30)
 
-    sensations = myroom.get_sensations(np.random.rand(1000, 2))
+    sensations = myroom.get_sensations(states)
     print("> sensations: \n", sensations)
+
+    fig = plt.figure(figsize=(12, 6))
+    ax1, ax2 = fig.subplots(1, 2)
+    for m, s, sta in zip(motors, sensations, states):
+        plt.sca(ax1)
+        show_sensation(s, new_fig=False)
+        plt.sca(ax2)
+        myagent.display(m, new_fig=False)
+        plt.pause(0.15)
+    plt.show(block=True)
 
 
 if __name__ == '__main__':

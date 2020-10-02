@@ -1,0 +1,170 @@
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+import json
+import _pickle as cpickle
+
+
+class MobileArm:
+    """TODO
+    type: str
+            type of agent
+        n_motors : int
+            number of independent motor components in [-1, 1]
+        size_regular_grid: int
+            number of samples that form the regular sampling of the motor space
+
+        generate_random_sampling(k):
+            randomly explores the motor space and returns the motor samples and corresponding sensor egocentric positions
+        generate_regular_sampling():
+            returns a regular sampling of the motor space and the corresponding sensor egocentric positions
+        display(motor):
+            displays the agent's configuration associated with an input motor command
+        log(dir):
+            logs the agent's parameters
+    """
+
+    def __init__(self,
+                 n_motors=4,
+                 motor_amplitude=np.array([np.pi, np.pi, np.pi, 0.8]),
+                 segments_length=np.array([0.5, 0.5, 0.5])):
+        self.n_motors = n_motors
+        self.motor_amplitude = motor_amplitude
+        self.segments_length = segments_length
+
+    @staticmethod
+    def check_m(m):
+        assert type(m) is np.ndarray
+        assert (-1 <= m).all() and (m <= 1).all(), "motor not in range (-1, 1)"
+        if m.ndim == 1:
+            m = m.reshape(1, -1)
+        return m
+
+    def get_state_from_motor(self, m):
+        """Get the position/orientation/aperture of the sensor.
+        """
+        m = self.check_m(m)
+        x = np.sum(
+            np.multiply(
+                self.segments_length,
+                np.cos(
+                    np.cumsum(
+                        self.motor_amplitude[:3].reshape(1, 3) * m[:, :3], axis=1))),
+            axis=1, keepdims=True)
+        y = np.sum(
+            np.multiply(
+                self.segments_length,
+                np.sin(
+                    np.cumsum(
+                        self.motor_amplitude[:3].reshape(1, 3) * m[:, :3], axis=1))),
+            axis=1, keepdims=True)
+        yaw = np.sum(
+            self.motor_amplitude[:3].reshape(1, 3) * m[:, :3],
+            axis=1, keepdims=True)
+        aperture = self.motor_amplitude[3] / 2 * (m[:, [3]] - 1) + 1
+        return np.hstack((x, y, yaw, aperture))
+
+    def generate_random_states(self, k=1):
+        """Draw a set of k randomly selected motor configurations and associated egocentric sensor positions
+        Returns:
+            motors - (k, self.n_motors) array
+            states - (k, 2) array
+        """
+        # draw random motor components in [-1, 1]
+        motors = 2 * np.random.rand(k, self.n_motors) - 1
+        # get the associated egocentric positions
+        states = self.get_state_from_motor(motors)
+        return motors, states
+
+    def generate_regular_states(self, resolution=7):
+        """Generates a regular grid of motor configurations in the motor space."""
+        # create a grid of coordinates
+        coordinates = np.array(
+            np.meshgrid(
+                *list([np.linspace(-1, 1, resolution)]) * self.n_motors
+            )
+        )
+        # reshape the coordinates into matrix of size (reso**n_motors, n_motors)
+        motor_grid = np.array(
+            [coord.reshape(-1) for coord in coordinates]
+        ).T
+        # get the corresponding positions
+        state_grid = self.get_state_from_motor(motor_grid)
+        return motor_grid, state_grid
+
+    def display(self, m, new_fig=True):
+        """Displays the position associated with a motor configuration"""
+        m = self.check_m(m)
+        # joints positions
+        x = np.cumsum(
+            np.multiply(
+                self.segments_length,
+                np.cos(
+                    np.cumsum(self.motor_amplitude[:3].reshape(1, 3) * m[:, :3], axis=1))),
+            axis=1)
+        y = np.cumsum(
+            np.multiply(
+                self.segments_length,
+                np.sin(
+                    np.cumsum(self.motor_amplitude[:3].reshape(1, 3) * m[:, :3],
+                              axis=1))),
+            axis=1)
+
+        # add the agent's base
+        x = np.hstack((np.zeros((x.shape[0], 1)), x))
+        y = np.hstack((np.zeros((y.shape[0], 1)), y))
+
+        yaw = np.sum(
+            self.motor_amplitude[:3].reshape(1, 3) * m[:, :3],
+            axis=1, keepdims=True)
+        aperture = self.motor_amplitude[3] / 2 * (m[:, [3]] - 1) + 1
+
+        # display the different motor configurations
+        if new_fig:
+            plt.figure()
+        plt.cla()
+        for x_, y_, yaw_, ap_ in zip(x, y, yaw, aperture):
+            plt.plot(x_, y_, '-o')
+            plt.quiver(x_[-1], y_[-1],
+                       np.cos(yaw_), np.sin(yaw_),
+                       color=(ap_ + self.motor_amplitude[3] - 1) * [1, 1, 1]  # gray proportional to aperture
+                       )
+            circ = plt.Circle((x_[-1], y_[-1]),
+                              0.4 * ap_,
+                              edgecolor=(ap_ + self.motor_amplitude[3] - 1) * [1, 1, 1],  # gray proportional to aperture
+                              facecolor="none",
+                              linewidth=3)
+            plt.gca().add_artist(circ)
+        rect = plt.Rectangle((-3.5, -3.5), 7, 7,
+                             edgecolor="k",
+                             linewidth=3,
+                             facecolor="none")
+        plt.gca().add_artist(rect)
+        plt.axis("equal")
+        r = np.sum(self.segments_length) * 2.4
+        plt.axis([-r, r, -r, r])
+
+    def save(self, directory):
+        """TODO save as yaml file
+        Save the agent on disk.
+        """
+        try:
+            # save a readable log of the agent
+            serializable_dict = self.__dict__.copy()
+            for key, value in serializable_dict.items():
+                if type(value) is np.ndarray:
+                    serializable_dict[key] = value.tolist()  # make the np.arrays serializable
+
+            if not os.path.exists(directory):
+                os.mkdir(directory)
+
+            with open(os.path.join(directory, "agent_params.txt"), "w") as f:
+                json.dump(serializable_dict, f, indent=2, sort_keys=True)
+
+            # save the object on disk
+            with open(os.path.join(directory, "agent.pkl"), "wb") as f:
+                cpickle.dump(self, f)
+
+        except (OSError, IOError):
+            print("ERROR: saving the agent in {} failed".format(directory))
+            return False

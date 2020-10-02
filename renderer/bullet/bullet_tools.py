@@ -128,43 +128,8 @@ def place_objects(
         pybullet.changeVisualShape(obj_id, -1, rgbaColor=color)
 
 
-def compute_yaw_and_pitch(vec):
-    x, y, z = vec
-    norm = np.linalg.norm(vec)
-    if z < 0:
-        yaw = np.pi + np.arctan(x / z)
-    elif x < 0:
-        if z == 0:
-            yaw = np.pi * 1.5
-        else:
-            yaw = np.pi * 2 + np.arctan(x / z)
-    elif z == 0:
-        yaw = np.pi / 2
-    else:
-        yaw = np.arctan(x / z)
-    pitch = -np.arcsin(y / norm)
-    # return yaw, pitch
-    return yaw, -pitch
-    # return pitch, -yaw
-
-
-def opengl_to_bullet_frame(vec):
-    """
-    Converts a rotation or a translation from the opengl ref frame to the
-    bullet ref frame (Y-UP vs Z-UP)
-
-    Parameters:
-        vec - A vector xyz, list of 3 elements
-    """
-    return [vec[0], vec[2], -vec[1]]
-
-
 def tear_down_scene():
     """
     Tears the scene down
     """
     pybullet.disconnect()
-
-
-def transform_pos_for_bullet(pos):
-    return [-pos[2], -pos[0], pos[1]]
