@@ -26,11 +26,10 @@ def append_time(d):
     return d
 
 
-def explore_and_save(agent, room, mode, directory):
+def explore_and_save(agent, room, mode, k, directory):
     assert mode in ["dynamic_base", "static_base", "hopping_base"]
     motors_t, shifts_t, states_t, motors_tp, shifts_tp, states_tp = \
-        agent.generate_random_transitions(mode,
-                                          config["n_transitions"])
+        agent.generate_random_transitions(mode, k)
     sensors_t = room.get_sensations(states_t)
     sensors_tp = room.get_sensations(states_tp)
     # save the data
@@ -50,22 +49,22 @@ def save_regular_grid(agent, resolution, directory):
                         **grid)
 
 
-def run(config):
+def generate_data(config_explo):
     """TODO"""
 
-    os.makedirs(config["save_directory"])
+    os.makedirs(config_explo["save_directory"])
 
-    with open(os.path.join(config["save_directory"], "config.yml"), "w") as f:
-        yaml.dump(config, f)
+    with open(os.path.join(config_explo["save_directory"], "config.yml"), "w") as f:
+        yaml.dump(config_explo, f)
 
     # iterate over the runs
-    for r in range(config["n_runs"]):
+    for r in range(config_explo["n_runs"]):
 
-        # subdirectory for the run
-        sub_dir = os.path.join(config["save_directory"],
-                               "run{:03}".format(r))
+        # subdirectory for the generate_data
+        sub_dir = os.path.join(config_explo["save_directory"],
+                               "generate_data{:03}".format(r))
         os.makedirs(sub_dir)
-        print("run {} >> {}".format(r, sub_dir))
+        print("generate_data {} >> {}".format(r, sub_dir))
 
         # create the agent
         agent = MobileArm()
@@ -78,13 +77,18 @@ def run(config):
         # save the regular exploration of the motor space
         save_regular_grid(agent, 7, sub_dir)
 
-        # run with dynamic base
-        explore_and_save(agent, room, "dynamic_base", sub_dir)
-        # run with static base
-        explore_and_save(agent, room, "static_base", sub_dir)
-        # run with static base
-        explore_and_save(agent, room, "hopping_base", sub_dir)
-
+        # generate_data with dynamic base
+        explore_and_save(agent, room, "dynamic_base",
+                         config_explo["n_transitions"],
+                         sub_dir)
+        # generate_data with static base
+        explore_and_save(agent, room, "static_base",
+                         config_explo["n_transitions"],
+                         sub_dir)
+        # generate_data with static base
+        explore_and_save(agent, room, "hopping_base",
+                         config_explo["n_transitions"],
+                         sub_dir)
         # clean
         room.destroy()
 
@@ -103,4 +107,4 @@ if __name__ == "__main__":
     config["git_commit"] = get_git_hash()
     config["save_directory"] = append_time(config["save_directory"])
 
-    run(config)
+    generate_data(config)

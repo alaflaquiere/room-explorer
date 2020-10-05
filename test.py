@@ -53,7 +53,7 @@ def main():
         show_sensation(s, new_fig=False)
         plt.sca(ax2)
         myagent.display(m, sh, new_fig=False)
-        plt.pause(0.15)
+        plt.pause(0.25)
     plt.show(block=True)
 
 
