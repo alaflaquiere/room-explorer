@@ -19,6 +19,15 @@ def show_sensation(s, new_fig=True, block=False):
     plt.show(block=block)
 
 
+def interleave(a, b):
+    assert a.shape[0] == b.shape[0]
+    c = np.empty((2 * a.shape[0], b.shape[1]),
+                 dtype=a.dtype)
+    c[0::2, :] = a
+    c[1::2, :] = b
+    return c
+
+
 def main():
     myroom = Room(resolution=16)
     image = myroom.overview()
@@ -27,7 +36,12 @@ def main():
 
     myagent = MobileArm()
     myagent.save("temp")
-    motors, shifts, states = myagent.generate_random_states(30)
+    motors_t, shifts_t, states_t, motors_tp, shifts_tp, states_tp =\
+        myagent.generate_random_transitions("hopping_base", 30)
+
+    motors = interleave(motors_t, motors_tp)
+    shifts = interleave(shifts_t, shifts_tp)
+    states = interleave(states_t, states_tp)
 
     sensations = myroom.get_sensations(states)
     print("> sensations: \n", sensations)

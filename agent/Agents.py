@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-import json
+import yaml
 import _pickle as cpickle
 
 
@@ -111,6 +111,33 @@ class MobileArm:
         states = self.get_state(motors, shifts)
         return motors, shifts, states
 
+    def generate_random_transitions(self, mode, k=1):
+        """TODO
+        Draw a set of k randomly selected motor configurations and associated egocentric sensor positions
+        MODE
+        Returns:
+            motors - (k, self.n_motors) array
+            states - (k, 2) array
+        """
+        assert mode in ["dynamic_base", "static_base", "hopping_base"]
+        # draw base shifts
+        if mode is "dynamic_base":
+            shifts_t = self.generate_random_shifts(k)
+            shifts_tp = self.generate_random_shifts(k)
+        elif mode is "static_base":
+            shifts_t = np.tile(np.random.rand(1, 3), (k, 1))
+            shifts_tp = shifts_t.copy()
+        elif mode is "hopping_base":
+            shifts_t = self.generate_random_shifts(k)
+            shifts_tp = shifts_t.copy()
+        # draw random motor components in [-1, 1]
+        motors_t = self.generate_random_motors(k)
+        motors_tp = self.generate_random_motors(k)
+        # get the associated egocentric positions
+        states_t = self.get_state(motors_t, shifts_t)
+        states_tp = self.get_state(motors_tp, shifts_tp)
+        return motors_t, shifts_t, states_t, motors_tp, shifts_tp, states_tp
+
     def generate_regular_states(self, resolution=7):
         """Generates a regular grid of motor configurations in the motor space."""
         # create a grid of coordinates
@@ -123,8 +150,10 @@ class MobileArm:
         motor_grid = np.array(
             [coord.reshape(-1) for coord in coordinates]
         ).T
+        # no shift
+        shifts = np.zeros((motor_grid.shape[0], 3))
         # get the corresponding positions
-        state_grid = self.get_state(motor_grid)
+        state_grid = self.get_state(motor_grid, shifts)
         return motor_grid, state_grid
 
     def display(self, m, shift, new_fig=True):
@@ -189,23 +218,17 @@ class MobileArm:
         """TODO save as yaml file
         Save the agent on disk.
         """
-        try:
-            # save a readable log of the agent
-            serializable_dict = self.__dict__.copy()
-            for key, value in serializable_dict.items():
-                if type(value) is np.ndarray:
-                    serializable_dict[key] = value.tolist()  # make the np.arrays serializable
 
-            if not os.path.exists(directory):
-                os.mkdir(directory)
+        if not os.path.exists(directory):
+            os.makedirs(directory)
 
-            with open(os.path.join(directory, "agent_params.txt"), "w") as f:
-                json.dump(serializable_dict, f, indent=2, sort_keys=True)
+        serializable_dict = self.__dict__.copy()
+        for key, value in serializable_dict.items():
+            if type(value) is np.ndarray:
+                serializable_dict[key] = value.tolist()  # make the np.arrays serializable
 
-            # save the object on disk
-            with open(os.path.join(directory, "agent.pkl"), "wb") as f:
-                cpickle.dump(self, f)
+        with open(os.path.join(directory, "agent_parameters.yml"), "w") as f:
+            yaml.dump(serializable_dict, f)
 
-        except (OSError, IOError):
-            print("ERROR: saving the agent in {} failed".format(directory))
-            return False
+        with open(os.path.join(directory, "agent.pkl"), "wb") as f:
+            cpickle.dump(self, f)

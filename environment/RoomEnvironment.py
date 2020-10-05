@@ -3,7 +3,7 @@ import numpy as np
 import pybullet
 import matplotlib.pyplot as plt
 from matplotlib.colors import rgb_to_hsv, hsv_to_rgb
-import json
+import yaml
 import _pickle as cpickle
 from tqdm import tqdm
 import renderer.bullet.bullet_tools as bullet_tools
@@ -16,9 +16,9 @@ agent's sensor).
 """
 
 
-def is_jsonable(x):
+def is_serialable(x):
     try:
-        json.dumps(x)
+        yaml.dump(x)
         return True
     except (TypeError, OverflowError):
         return False
@@ -29,7 +29,7 @@ def apply_aperture(img, aperture):
     img = rgb_to_hsv(img.reshape(-1, 3) / 255)
     img[:, 2] *= aperture
     img = hsv_to_rgb(img) * 255
-    return img.astype(int)
+    return img.astype(np.uint8)
 
 
 class Room:
@@ -82,7 +82,7 @@ class Room:
         assert states.shape[1] == 4, "positions should be of shape (N, 4)"
         N = states.shape[0]
 
-        sensations = np.empty((N, self.resolution * self.resolution * 3), dtype=np.int)
+        sensations = np.empty((N, self.resolution * self.resolution * 3), dtype=np.uint8)
         for i, state in enumerate(tqdm(states, desc="Room exploration", mininterval=1)):
             assert (-self.size / 2 < state[0:2]).all() \
                    and (state[0:2] < self.size / 2).all(), \
@@ -101,18 +101,6 @@ class Room:
             # save sensation
             sensations[i, :] = image.reshape(-1)
         return sensations
-
-    def DEPRECATED_generate_shift(self, k=1, static=False):
-        """
-        TODO this outside of the class
-        Returns k random shifts for the environment in [-1.75, 1.75]^2.
-        If static=True, returns the default shift which is [0, 0].
-        """
-        if static:
-            shift = np.zeros((k, 2))
-        else:
-            shift = np.array(self.size) / 2 * np.random.rand(k, 2) - np.array(self.size) / 4
-        return shift
 
     @staticmethod
     def destroy():
@@ -139,35 +127,30 @@ class Room:
         """
         Save the environment on disk.
         """
-        try:
-            serializable_dict = self.__dict__.copy()
-            for key, value in self.__dict__.items():
-                if type(value) is np.ndarray:
-                    serializable_dict[key] = value.tolist()  # make the np.arrays serializable
-                    continue
-                if not is_jsonable(value):
-                    del serializable_dict[key]
+        serializable_dict = self.__dict__.copy()
+        for key, value in self.__dict__.items():
+            if type(value) is np.ndarray:
+                serializable_dict[key] = value.tolist()  # make the np.arrays serializable
+                continue
+            if not is_serialable(value):
+                del serializable_dict[key]
 
-            if not os.path.exists(directory):
-                os.mkdir(directory)
+        if not os.path.exists(directory):
+            os.makedirs(directory)
 
-            with open(os.path.join(directory, "environment_params.txt"), "w") as f:
-                json.dump(serializable_dict, f, indent=1)
+        with open(os.path.join(directory, "environment_parameters.yml"), "w") as f:
+            yaml.dump(serializable_dict, f, indent=1)
 
-            # save the object on disk
-            with open(os.path.join(directory, "environment.pkl"), "wb") as f:
-                cpickle.dump(self, f)
+        # save the object on disk
+        with open(os.path.join(directory, "environment.pkl"), "wb") as f:
+            cpickle.dump(self, f)
 
-            # save an image of the environment
-            image = self.overview()
-            fig = plt.figure(figsize=(8, 8))
-            ax = fig.add_subplot(1, 1, 1)
-            plt.tight_layout()
-            ax.imshow(image, interpolation="none")
-            ax.axis("off")
-            fig.savefig(os.path.join(directory, "environment_image.png"))
-            plt.close(fig)
-
-        except (OSError, IOError):
-            print("ERROR: saving the environment in {} failed".format(directory))
-            return False
+        # save an image of the environment
+        image = self.overview()
+        fig = plt.figure(figsize=(8, 8))
+        ax = fig.add_subplot(1, 1, 1)
+        plt.tight_layout()
+        ax.imshow(image, interpolation="none")
+        ax.axis("off")
+        fig.savefig(os.path.join(directory, "environment_image.png"))
+        plt.close(fig)
