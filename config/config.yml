@@ -13,5 +13,5 @@ agent:
   fixed_orientation: True
 
 n_transitions: 100000
-n_runs: 3
+n_runs: 1
 save_directory: ".datasets/FixedOrientation_NoAperture"

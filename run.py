@@ -28,6 +28,7 @@ def append_time(d):
 
 def explore_and_save(agent, room, mode, k, directory):
     assert mode in ["dynamic_base", "static_base", "hopping_base"]
+    print("mode: {}".format(mode))
     motors_t, shifts_t, states_t, motors_tp, shifts_tp, states_tp = \
         agent.generate_random_transitions(mode, k)
     sensors_t = room.get_sensations(states_t)

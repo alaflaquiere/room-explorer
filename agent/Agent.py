@@ -40,12 +40,18 @@ class MobileArm:
         self.lens = process_yaml_list(lengths)
         self.fixed_orientation = fixed_orientation
 
-    @staticmethod
-    def check_motor(m):
+    def check_motor(self, m):
         assert type(m) is np.ndarray
-        assert (-1 <= m).all() and (m <= 1).all(), "motor not in range (-1, 1)"
         if m.ndim == 1:
             m = m.reshape(1, -1)
+        assert (-1 <= m).all() and (m <= 1).all(), "motor not in range (-1, 1)"
+        if self.fixed_orientation:
+            rel_a = self.amps[:4].reshape(1, 4) * m[:, :4]
+            total_a = np.sum(rel_a[:, :4], axis=1)
+            total_a = np.fmod(total_a, 2 * np.pi)
+            assert np.logical_or(np.abs(total_a) < 1e-8,
+                                 2 * np.pi - np.abs(total_a) < 1e-8
+                                 ).all(), "the sensor orientation is expected to be fixed to 0"
         return m
 
     def check_shift(self, sh):
@@ -57,6 +63,8 @@ class MobileArm:
                "shift[0:2] not in range (-arm_reach, arm_reach)"
         assert (0 <= sh[:, 2]).all() and (sh[:, 2] <= 2 * np.pi).all(), \
                "shift[2] not in range (0, 2*pi)"
+        if self.fixed_orientation:
+            assert (sh[:, 2] == 0.).all(), "orientation should be fixed"
         return sh
 
     def get_state(self, m, shift):
@@ -66,11 +74,6 @@ class MobileArm:
         shift = self.check_shift(shift)
         # relative angles
         rel_a = self.amps[:4].reshape(1, 4) * m[:, :4]
-        # fix sensor orientation if necessary
-        if self.fixed_orientation:
-            total_a = np.sum(rel_a[:, :4], axis=1)
-            assert (np.fmod(total_a, 2 * np.pi) < 1e-8).all(),\
-                "the sensor orientation is expected to be fixed"
         # update base angle
         rel_a[:, 0] = rel_a[:, 0] + shift[:, 2]
         # sensor positions
@@ -86,8 +89,11 @@ class MobileArm:
                 np.sin(
                     np.cumsum(rel_a, axis=1))),
             axis=1, keepdims=True)
-        yaw = np.sum(rel_a[:, :4], axis=1, keepdims=True)
-        yaw = np.mod(yaw, 2 * np.pi)
+        if self.fixed_orientation:
+            yaw = np.zeros_like(x)
+        else:
+            yaw = np.sum(rel_a[:, :4], axis=1, keepdims=True)
+            yaw = np.mod(yaw, 2 * np.pi)
         aperture = self.amps[4] / 2 * (m[:, [4]] - 1) + 1
         # update the position
         x += shift[:, [0]]
@@ -119,7 +125,7 @@ class MobileArm:
         """
         xy = np.sum(self.lens) * (2 * np.random.rand(k, 2) - 1)
         if self.fixed_orientation:
-            a = 2 * np.pi * np.zeros((k, 1))
+            a = np.zeros((k, 1))
         else:
             a = 2 * np.pi * np.random.rand(k, 1)
         return np.hstack((xy, a))
@@ -153,6 +159,8 @@ class MobileArm:
             shifts_tp = self.generate_random_shifts(k)
         elif mode is "static_base":
             shifts_t = np.tile(np.random.rand(1, 3), (k, 1))
+            if self.fixed_orientation:
+                shifts_t[:, 2] = 0.
             shifts_tp = shifts_t.copy()
         elif mode is "hopping_base":
             shifts_t = self.generate_random_shifts(k)
@@ -192,10 +200,6 @@ class MobileArm:
         shift = self.check_shift(shift)
         # relative angles
         rel_a = self.amps[:4].reshape(1, 4) * m[:, :4]
-        if self.fixed_orientation:
-            total_a = np.sum(rel_a[:, :4], axis=1)
-            assert (np.fmod(total_a, 2 * np.pi) < 1e-8).all(), \
-                "the sensor orientation is expected to be fixed"
         # update base angle
         rel_a[:, 0] = rel_a[:, 0] + shift[:, 2]
         # joints positions
