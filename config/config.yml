@@ -1,3 +1,17 @@
-n_transitions: 1000 #150000
+agent:
+  amplitudes:
+    - np.pi
+    - np.pi
+    - np.pi
+    - np.pi
+    - 0.0
+  lengths:
+    - 0.5
+    - 0.5
+    - 0.5
+    - 0
+  fixed_orientation: True
+
+n_transitions: 100000
 n_runs: 3
-save_directory: ".datasets/explo"
+save_directory: ".datasets/FixedOrientation_NoAperture"

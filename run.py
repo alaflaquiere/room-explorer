@@ -6,7 +6,7 @@ from argparse import ArgumentParser
 import subprocess
 
 from environment.RoomEnvironment import Room
-from agent.Agents import MobileArm
+from agent.Agent import MobileArm
 
 
 def get_git_hash():
@@ -49,25 +49,25 @@ def save_regular_grid(agent, resolution, directory):
                         **grid)
 
 
-def generate_data(config_explo):
+def generate_data(conf):
     """TODO"""
 
-    os.makedirs(config_explo["save_directory"])
+    os.makedirs(conf["save_directory"])
 
-    with open(os.path.join(config_explo["save_directory"], "config.yml"), "w") as f:
-        yaml.dump(config_explo, f)
+    with open(os.path.join(conf["save_directory"], "config.yml"), "w") as f:
+        yaml.dump(conf, f)
 
     # iterate over the runs
-    for r in range(config_explo["n_runs"]):
+    for r in range(conf["n_runs"]):
 
-        # subdirectory for the generate_data
-        sub_dir = os.path.join(config_explo["save_directory"],
-                               "generate_data{:03}".format(r))
+        # subdirectory for the run
+        sub_dir = os.path.join(conf["save_directory"],
+                               "run{:03}".format(r))
         os.makedirs(sub_dir)
-        print("generate_data {} >> {}".format(r, sub_dir))
+        print("run {} >> {}".format(r, sub_dir))
 
         # create the agent
-        agent = MobileArm()
+        agent = MobileArm(**conf["agent"])
         agent.save(sub_dir)
 
         # create an environment
@@ -79,15 +79,15 @@ def generate_data(config_explo):
 
         # generate_data with dynamic base
         explore_and_save(agent, room, "dynamic_base",
-                         config_explo["n_transitions"],
+                         conf["n_transitions"],
                          sub_dir)
         # generate_data with static base
         explore_and_save(agent, room, "static_base",
-                         config_explo["n_transitions"],
+                         conf["n_transitions"],
                          sub_dir)
         # generate_data with static base
         explore_and_save(agent, room, "hopping_base",
-                         config_explo["n_transitions"],
+                         conf["n_transitions"],
                          sub_dir)
         # clean
         room.destroy()

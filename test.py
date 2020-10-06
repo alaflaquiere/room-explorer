@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from environment.RoomEnvironment import Room
-from agent.Agents import MobileArm
+from agent.Agent import MobileArm
 
 
 def show_sensation(s, new_fig=True, block=False):

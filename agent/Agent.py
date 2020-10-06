@@ -5,6 +5,13 @@ import yaml
 import _pickle as cpickle
 
 
+def process_yaml_list(x):
+    if type(x) is np.ndarray:
+        return x
+    else:
+        return np.array([eval(i) if type(i) is str else i for i in x])
+
+
 class MobileArm:
     """TODO
     type: str
@@ -25,12 +32,13 @@ class MobileArm:
     """
 
     def __init__(self,
-                 n_motors=4,
-                 motor_amplitude=np.array([np.pi, np.pi, np.pi, 0.8]),
-                 segments_length=np.array([0.5, 0.5, 0.5])):
-        self.n_motors = n_motors
-        self.motor_amplitude = motor_amplitude
-        self.segments_length = segments_length
+                 amplitudes=np.array([np.pi, np.pi, np.pi, np.pi, 0.8]),
+                 lengths=np.array([0.5, 0.5, 0.5, 0]),
+                 fixed_orientation=False):
+        self.n_motors = 5
+        self.amps = process_yaml_list(amplitudes)
+        self.lens = process_yaml_list(lengths)
+        self.fixed_orientation = fixed_orientation
 
     @staticmethod
     def check_motor(m):
@@ -44,9 +52,9 @@ class MobileArm:
         assert type(sh) is np.ndarray
         if sh.ndim == 1:
             sh = sh.reshape(1, -1)
-        assert (-np.sum(self.segments_length) <= sh[:, 0:2]).all()\
-               and (sh[:, 0:2] <= np.sum(self.segments_length)).all(),\
-               "shift[0:2] not in range (-reach, reach)"
+        assert (-np.sum(self.lens) <= sh[:, 0:2]).all()\
+               and (sh[:, 0:2] <= np.sum(self.lens)).all(),\
+               "shift[0:2] not in range (-arm_reach, arm_reach)"
         assert (0 <= sh[:, 2]).all() and (sh[:, 2] <= 2 * np.pi).all(), \
                "shift[2] not in range (0, 2*pi)"
         return sh
@@ -57,35 +65,51 @@ class MobileArm:
         m = self.check_motor(m)
         shift = self.check_shift(shift)
         # relative angles
-        rel_a = self.motor_amplitude[:3].reshape(1, 3) * m[:, :3]
+        rel_a = self.amps[:4].reshape(1, 4) * m[:, :4]
+        # fix sensor orientation if necessary
+        if self.fixed_orientation:
+            total_a = np.sum(rel_a[:, :4], axis=1)
+            assert (np.fmod(total_a, 2 * np.pi) < 1e-8).all(),\
+                "the sensor orientation is expected to be fixed"
         # update base angle
         rel_a[:, 0] = rel_a[:, 0] + shift[:, 2]
         # sensor positions
         x = np.sum(
             np.multiply(
-                self.segments_length,
+                self.lens,
                 np.cos(
                     np.cumsum(rel_a, axis=1))),
             axis=1, keepdims=True)
         y = np.sum(
             np.multiply(
-                self.segments_length,
+                self.lens,
                 np.sin(
                     np.cumsum(rel_a, axis=1))),
             axis=1, keepdims=True)
-        yaw = np.sum(rel_a[:, :3], axis=1, keepdims=True)
-        aperture = self.motor_amplitude[3] / 2 * (m[:, [3]] - 1) + 1
+        yaw = np.sum(rel_a[:, :4], axis=1, keepdims=True)
+        yaw = np.mod(yaw, 2 * np.pi)
+        aperture = self.amps[4] / 2 * (m[:, [4]] - 1) + 1
         # update the position
         x += shift[:, [0]]
         y += shift[:, [1]]
         return np.hstack((x, y, yaw, aperture))
 
+    def fix_orientation(self, m):
+        rel_a = self.amps[:4].reshape(1, 4) * m[:, :4]
+        rel_a[:, 3] = -np.sum(rel_a[:, :3], axis=1)
+        rel_a[:, 3] = np.mod(rel_a[:, 3] + np.pi, 2 * np.pi) - np.pi
+        m[:, 3] = rel_a[:, 3] / self.amps[3]
+        return m
+
     def generate_random_motors(self, k=1):
         """Draw a set of k random motor commands in [-1, 1]
         Returns:
-            motors - (k, 3) array
+            motors - (k, 5) array
         """
-        return 2 * np.random.rand(k, self.n_motors) - 1
+        motors = 2 * np.random.rand(k, self.n_motors) - 1
+        if self.fixed_orientation:
+            motors = self.fix_orientation(motors)
+        return motors
 
     def generate_random_shifts(self, k=1):
         """Draw a set of k random shifts with a max amplitude
@@ -93,8 +117,11 @@ class MobileArm:
         Returns:
             shifts - (k, 3) array
         """
-        xy = np.sum(self.segments_length) * (2 * np.random.rand(k, 2) - 1)
-        a = 2 * np.pi * np.random.rand(k, 1)
+        xy = np.sum(self.lens) * (2 * np.random.rand(k, 2) - 1)
+        if self.fixed_orientation:
+            a = 2 * np.pi * np.zeros((k, 1))
+        else:
+            a = 2 * np.pi * np.random.rand(k, 1)
         return np.hstack((xy, a))
 
     def generate_random_states(self, k=1):
@@ -146,10 +173,13 @@ class MobileArm:
                 *list([np.linspace(-1, 1, resolution)]) * self.n_motors
             )
         )
-        # reshape the coordinates into matrix of size (reso**n_motors, n_motors)
+        # reshape the coordinates into matrix of size (resolution**n_motors, n_motors)
         motor_grid = np.array(
             [coord.reshape(-1) for coord in coordinates]
         ).T
+        # fix_orientation if necessary
+        if self.fixed_orientation:
+            motor_grid = self.fix_orientation(motor_grid)
         # no shift
         shifts = np.zeros((motor_grid.shape[0], 3))
         # get the corresponding positions
@@ -161,19 +191,23 @@ class MobileArm:
         m = self.check_motor(m)
         shift = self.check_shift(shift)
         # relative angles
-        rel_a = self.motor_amplitude[:3].reshape(1, 3) * m[:, :3]
+        rel_a = self.amps[:4].reshape(1, 4) * m[:, :4]
+        if self.fixed_orientation:
+            total_a = np.sum(rel_a[:, :4], axis=1)
+            assert (np.fmod(total_a, 2 * np.pi) < 1e-8).all(), \
+                "the sensor orientation is expected to be fixed"
         # update base angle
         rel_a[:, 0] = rel_a[:, 0] + shift[:, 2]
         # joints positions
         x = np.cumsum(
             np.multiply(
-                self.segments_length,
+                self.lens,
                 np.cos(
                     np.cumsum(rel_a, axis=1))),
             axis=1)
         y = np.cumsum(
             np.multiply(
-                self.segments_length,
+                self.lens,
                 np.sin(
                     np.cumsum(rel_a, axis=1))),
             axis=1)
@@ -183,7 +217,7 @@ class MobileArm:
         y = np.hstack((np.zeros((y.shape[0], 1)), y))
 
         yaw = np.sum(rel_a, axis=1, keepdims=True)
-        aperture = self.motor_amplitude[3] / 2 * (m[:, [3]] - 1) + 1
+        aperture = self.amps[4] / 2 * (m[:, [4]] - 1) + 1
 
         # update the positions with the shift
         x += shift[:, [0]]
@@ -197,11 +231,11 @@ class MobileArm:
             plt.plot(x_, y_, '-o')
             plt.quiver(x_[-1], y_[-1],
                        np.cos(yaw_), np.sin(yaw_),
-                       color=(ap_ + self.motor_amplitude[3] - 1) * [1, 1, 1]  # gray proportional to aperture
+                       color=(ap_ + self.amps[4] - 1) * [1, 1, 1]  # gray proportional to aperture
                        )
             circ = plt.Circle((x_[-1], y_[-1]),
                               0.4 * ap_,
-                              edgecolor=(ap_ + self.motor_amplitude[3] - 1) * [1, 1, 1],  # gray proportional to aperture
+                              edgecolor=(ap_ + self.amps[4] - 1) * [1, 1, 1],  # gray proportional to aperture
                               facecolor="none",
                               linewidth=3)
             plt.gca().add_artist(circ)
@@ -211,7 +245,7 @@ class MobileArm:
                              facecolor="none")
         plt.gca().add_artist(rect)
         plt.axis("equal")
-        r = np.sum(self.segments_length) * 2.4
+        r = np.sum(self.lens) * 2.4
         plt.axis([-r, r, -r, r])
 
     def save(self, directory):
