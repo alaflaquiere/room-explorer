@@ -4,3 +4,4 @@ pybullet==3.0.4
 tqdm==4.50.0
 PyYAML~=5.3.1
 flatten_dict~=0.3.0
+h5py~=2.10.0

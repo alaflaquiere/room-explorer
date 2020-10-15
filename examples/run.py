@@ -8,7 +8,7 @@ import subprocess
 from argparse import ArgumentParser
 from flatten_dict import flatten
 
-sys.path.append(os.path.join(os.getcwd(), "..\\src"))
+sys.path.append(os.path.join(os.getcwd(), ".."))
 import RoomExplorer
 
 
