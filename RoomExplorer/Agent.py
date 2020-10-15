@@ -91,11 +91,8 @@ class MobileArm:
                 np.sin(
                     np.cumsum(rel_a, axis=1))),
             axis=1, keepdims=True)
-        if self.fixed_orientation:
-            yaw = np.zeros_like(x)
-        else:
-            yaw = np.sum(rel_a[:, :4], axis=1, keepdims=True)
-            yaw = np.mod(yaw, 2 * np.pi)
+        yaw = np.sum(rel_a[:, :4], axis=1, keepdims=True)
+        yaw = np.mod(yaw, 2 * np.pi)
         aperture = self.amps[4] / 2 * (m[:, [4]] - 1) + 1
         # update the position
         x += shift[:, [0]]
@@ -160,9 +157,7 @@ class MobileArm:
             shifts_t = self.generate_random_shifts(k)
             shifts_tp = self.generate_random_shifts(k)
         elif mode is "static_base":
-            shifts_t = np.tile(np.random.rand(1, 3), (k, 1))
-            if self.fixed_orientation:
-                shifts_t[:, 2] = 0.
+            shifts_t = np.tile(self.generate_random_shifts(1), (k, 1))
             shifts_tp = shifts_t.copy()
         elif mode is "hopping_base":
             shifts_t = self.generate_random_shifts(k)
@@ -177,12 +172,12 @@ class MobileArm:
 
     def generate_regular_states(self, resolution=0):
         """Generates a regular grid of motor configurations in the motor space."""
-        # TODO: discard the last rotation when the orientation is fixed
         resolution = self.motor_grid_resolution if resolution == 0 else resolution
         # create a grid of coordinates
+        n_motors = self.n_motors - 1 if self.fixed_orientation else self.n_motors
         coordinates = np.array(
             np.meshgrid(
-                *list([np.linspace(-1, 1, resolution)]) * self.n_motors
+                *list([np.linspace(-1, 1, resolution)]) * n_motors
             )
         )
         # reshape the coordinates into matrix of size (resolution**n_motors, n_motors)
@@ -191,6 +186,7 @@ class MobileArm:
         ).T
         # fix_orientation if necessary
         if self.fixed_orientation:
+            motor_grid = np.insert(motor_grid, 3, -999, axis=1)  # add a dummy column
             motor_grid = self.fix_orientation(motor_grid)
         # no shift
         shifts = np.zeros((motor_grid.shape[0], 3))
@@ -257,7 +253,7 @@ class MobileArm:
         plt.axis([-r, r, -r, r])
 
     def save(self, directory):
-        """ todo: check it's still functional
+        """
         Save the agent on disk.
         """
 

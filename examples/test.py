@@ -32,14 +32,12 @@ def interleave(a, b):
 
 
 def main():
-    # TODO: UPDATE SINCE HDF5
-
     myroom = RoomExplorer.Room(resolution=16)
     image = myroom.overview()
     show_sensation(image)
     myroom.save("temp")
 
-    myagent = RoomExplorer.MobileArm()
+    myagent = RoomExplorer.MobileArm(fixed_orientation=False)
     myagent.save("temp")
     motors_t, shifts_t, states_t, motors_tp, shifts_tp, states_tp =\
         myagent.generate_random_transitions("hopping_base", 12)

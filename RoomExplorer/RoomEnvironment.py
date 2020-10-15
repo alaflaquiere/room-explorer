@@ -128,7 +128,7 @@ class Room:
         return image
 
     def save(self, directory):
-        """todo: check it's still functional
+        """
         Save the environment on disk.
         """
         serializable_dict = self.__dict__.copy()

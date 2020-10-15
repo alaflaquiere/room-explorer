@@ -41,15 +41,6 @@ def explore(agent, room, mode, k):
     return motors_t, sensors_t, motors_tp, sensors_tp
 
 
-def save_regular_grid(agent, resolution, directory):
-    #todo: necessary?!
-    motor_grid, state_grid = agent.generate_regular_states(resolution)
-    grid = {"motor_grid": motor_grid,
-            "state_grid": state_grid}
-    np.savez_compressed(os.path.join(directory, "data_regular_grid.npz"),
-                        **grid)
-
-
 def save_hdf5_datasets(filename, names, datasets):
     with h5py.File(filename, "a") as file:
         for name, dataset in zip(names, datasets):
@@ -85,19 +76,10 @@ def generate_dataset(conf):
         # create an environment
         room = RoomExplorer.Room(**conf["environment"])
 
-        # # create the env group, save the data and metadata
-        # with h5py.File(filename, "a") as file:
-        #     file.create_group(name)
-
         # generate_dataset with dynamic base
         data = explore(agent, room, "dynamic_base",
                        conf["dataset"]["n_transitions"])
         # save the datasets
-        # with h5py.File(filename, "a") as file:
-        #     file.create_dataset(name + "/dynamic_base/motor_t", data=data[0])
-        #     file.create_dataset(name + "/dynamic_base/sensor_t", data=data[1])
-        #     file.create_dataset(name + "/dynamic_base/motor_tp", data=data[2])
-        #     file.create_dataset(name + "/dynamic_base/sensor_tp", data=data[3])
         save_hdf5_datasets(filename,
                            names=[name + "/dynamic_base/motor_t",
                                   name + "/dynamic_base/sensor_t",
@@ -110,11 +92,6 @@ def generate_dataset(conf):
         data = explore(agent, room, "static_base",
                        conf["dataset"]["n_transitions"])
         # save the datasets
-        # with h5py.File(filename, "a") as file:
-        #     file.create_dataset(name + "/static_base/motor_t", data=data[0])
-        #     file.create_dataset(name + "/static_base/sensor_t", data=data[1])
-        #     file.create_dataset(name + "/static_base/motor_tp", data=data[2])
-        #     file.create_dataset(name + "/static_base/sensor_tp", data=data[3])
         save_hdf5_datasets(filename,
                            names=[name + "/static_base/motor_t",
                                   name + "/static_base/sensor_t",
@@ -127,11 +104,6 @@ def generate_dataset(conf):
         data = explore(agent, room, "hopping_base",
                        conf["dataset"]["n_transitions"])
         # save the datasets
-        # with h5py.File(filename, "a") as file:
-        #     file.create_dataset(name + "/hopping_base/motor_t", data=data[0])
-        #     file.create_dataset(name + "/hopping_base/sensor_t", data=data[1])
-        #     file.create_dataset(name + "/hopping_base/motor_tp", data=data[2])
-        #     file.create_dataset(name + "/hopping_base/sensor_tp", data=data[3])
         save_hdf5_datasets(filename,
                            names=[name + "/hopping_base/motor_t",
                                   name + "/hopping_base/sensor_t",
