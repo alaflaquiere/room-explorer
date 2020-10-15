@@ -2,8 +2,8 @@ import os
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
+
 sys.path.append(os.path.join(os.getcwd(), "..\\src"))
-# print("\n".join(sys.path))
 import RoomExplorer
 
 
@@ -32,6 +32,8 @@ def interleave(a, b):
 
 
 def main():
+    # TODO: UPDATE SINCE HDF5
+
     myroom = RoomExplorer.Room(resolution=16)
     image = myroom.overview()
     show_sensation(image)

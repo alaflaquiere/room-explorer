@@ -11,7 +11,12 @@ agent:
     - 0.5
     - 0
   fixed_orientation: True
+  motor_grid_resolution: 7
 
-n_transitions: 100000
-n_runs: 30
-save_directory: ".data/30_FixedOrientation_NoAperture"
+environment:
+  resolution: 16
+
+dataset:
+  n_runs: 30
+  n_transitions: 100000
+  save_directory: "..\\.data\\FixedOrientaitonAndAperture.hdf5"
