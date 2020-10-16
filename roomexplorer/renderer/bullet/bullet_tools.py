@@ -4,15 +4,16 @@ import numpy as np
 import pybullet
 import colorsys
 
-from RoomExplorer import TEXTURES_PATH, URDF_PATH
+ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
+TEXTURES_PATH = os.path.join(ROOT_PATH, "..", "textures")
+URDF_PATH = os.path.join(ROOT_PATH, "..", "urdf")
 
 FLOOR_TEXTURES = glob.glob(os.path.join(TEXTURES_PATH, "*floor*.tga"))
 WALL_TEXTURES = glob.glob(os.path.join(TEXTURES_PATH, "*wall*.tga"))
 
-URDFS = glob.glob(os.path.join(URDF_PATH, "*.urdf"))
-FLOOR = [urdf for urdf in URDFS if "floor.urdf" in urdf][0]
-WALLS = [urdf for urdf in URDFS if "walls.urdf" in urdf][0]
-OBJECTS = URDFS
+FLOOR = os.path.join(URDF_PATH, "floor.urdf")
+WALLS = os.path.join(URDF_PATH, "walls.urdf")
+OBJECTS = glob.glob(os.path.join(URDF_PATH, "*.urdf"))
 OBJECTS.remove(FLOOR)
 OBJECTS.remove(WALLS)
 

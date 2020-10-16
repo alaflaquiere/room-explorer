@@ -9,7 +9,7 @@ from argparse import ArgumentParser
 from flatten_dict import flatten
 
 sys.path.append(os.path.join(os.getcwd(), ".."))
-import RoomExplorer
+import roomexplorer
 
 
 def get_git_hash():
@@ -60,7 +60,7 @@ def generate_dataset(conf):
             file.attrs.create(k, data=v)
 
     # create the agent
-    agent = RoomExplorer.MobileArm(**conf["agent"])
+    agent = roomexplorer.MobileArm(**conf["agent"])
 
     # save the regular motor exploration
     motor_grid, state_grid = agent.generate_regular_states()
@@ -74,7 +74,7 @@ def generate_dataset(conf):
         print(name)
 
         # create an environment
-        room = RoomExplorer.Room(**conf["environment"])
+        room = roomexplorer.Room(**conf["environment"])
 
         # generate_dataset with dynamic base
         data = explore(agent, room, "dynamic_base",

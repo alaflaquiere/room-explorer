@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 sys.path.append(os.path.join(os.getcwd(), ".."))
-import RoomExplorer
+import roomexplorer
 
 
 def show_sensation(s, new_fig=True, block=False):
@@ -32,12 +32,12 @@ def interleave(a, b):
 
 
 def main():
-    myroom = RoomExplorer.Room(resolution=16)
+    myroom = roomexplorer.Room(resolution=16)
     image = myroom.overview()
     show_sensation(image)
     myroom.save("temp")
 
-    myagent = RoomExplorer.MobileArm(fixed_orientation=False)
+    myagent = roomexplorer.MobileArm(fixed_orientation=False)
     myagent.save("temp")
     motors_t, shifts_t, states_t, motors_tp, shifts_tp, states_tp =\
         myagent.generate_random_transitions("hopping_base", 12)

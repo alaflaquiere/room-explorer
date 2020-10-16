@@ -7,7 +7,7 @@ import yaml
 import _pickle as cpickle
 from tqdm import tqdm
 
-import RoomExplorer
+import roomexplorer
 
 """
 Collection of environments that can be used by generate-sensorimotor-data.py.
@@ -53,19 +53,19 @@ class Room:
         self.n_obstacles = n_obstacles
 
         # Build the scene
-        RoomExplorer.bullet_tools.build_scene(fix_light_position=True)
+        roomexplorer.bullet_tools.build_scene(fix_light_position=True)
 
         # Create the objects
-        RoomExplorer.bullet_tools.place_objects(
-            RoomExplorer.bullet_tools.get_colors(12),
+        roomexplorer.bullet_tools.place_objects(
+            roomexplorer.bullet_tools.get_colors(12),
             min_num_objects=self.n_obstacles,
             max_num_objects=self.n_obstacles,
             discrete_position=False,
             rotate_object=True)
 
         # Create the camera
-        self._camera = RoomExplorer.Camera(70,
-                                           RoomExplorer.CameraResolution(resolution,
+        self._camera = roomexplorer.Camera(70,
+                                           roomexplorer.CameraResolution(resolution,
                                                                          resolution))  # former fov: 45
         self._camera_height = 1.6
         self._pitch = 0.62
@@ -109,14 +109,14 @@ class Room:
         """
         Disconnect the pybullet scene.
         """
-        RoomExplorer.bullet_tools.tear_down_scene()
+        roomexplorer.bullet_tools.tear_down_scene()
 
     @staticmethod
     def overview():
         camera_position = [-7.5, -7.5, 7.5]  # [8, 8, 8]
         resolution = 512
-        overview_camera = RoomExplorer.Camera(45,
-                                              RoomExplorer.CameraResolution(resolution,
+        overview_camera = roomexplorer.Camera(45,
+                                              roomexplorer.CameraResolution(resolution,
                                                                             resolution))
         # set the camera orientation and position
         yaw = np.pi / 4
