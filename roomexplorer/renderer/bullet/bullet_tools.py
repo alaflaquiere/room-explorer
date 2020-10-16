@@ -76,7 +76,7 @@ def build_scene(
     pybullet.changeVisualShape(floorId, -1, textureUniqueId=floor_texture)
 
     # load the walls
-    wallsId = pybullet.loadURDF("../urdf/walls.urdf",
+    wallsId = pybullet.loadURDF(WALLS,  # "../urdf/walls.urdf"
                                 globalScaling=1,
                                 basePosition=[0., 0., 0.],
                                 baseOrientation=pybullet.getQuaternionFromEuler([0, 0, 0]),

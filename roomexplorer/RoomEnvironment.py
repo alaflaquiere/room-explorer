@@ -7,7 +7,8 @@ import yaml
 import _pickle as cpickle
 from tqdm import tqdm
 
-import roomexplorer
+from roomexplorer.renderer.bullet import bullet_tools
+from roomexplorer.renderer.bullet.camera import Camera, CameraResolution
 
 """
 Collection of environments that can be used by generate-sensorimotor-data.py.
@@ -53,20 +54,20 @@ class Room:
         self.n_obstacles = n_obstacles
 
         # Build the scene
-        roomexplorer.bullet_tools.build_scene(fix_light_position=True)
+        bullet_tools.build_scene(fix_light_position=True)
 
         # Create the objects
-        roomexplorer.bullet_tools.place_objects(
-            roomexplorer.bullet_tools.get_colors(12),
+        bullet_tools.place_objects(
+            bullet_tools.get_colors(12),
             min_num_objects=self.n_obstacles,
             max_num_objects=self.n_obstacles,
             discrete_position=False,
             rotate_object=True)
 
         # Create the camera
-        self._camera = roomexplorer.Camera(70,
-                                           roomexplorer.CameraResolution(resolution,
-                                                                         resolution))  # former fov: 45
+        self._camera = Camera(70,
+                              CameraResolution(resolution,
+                                               resolution))  # former fov: 45
         self._camera_height = 1.6
         self._pitch = 0.62
 
@@ -109,15 +110,14 @@ class Room:
         """
         Disconnect the pybullet scene.
         """
-        roomexplorer.bullet_tools.tear_down_scene()
+        bullet_tools.tear_down_scene()
 
     @staticmethod
     def overview():
         camera_position = [-7.5, -7.5, 7.5]  # [8, 8, 8]
         resolution = 512
-        overview_camera = roomexplorer.Camera(45,
-                                              roomexplorer.CameraResolution(resolution,
-                                                                            resolution))
+        overview_camera = Camera(45,
+                                 CameraResolution(resolution, resolution))
         # set the camera orientation and position
         yaw = np.pi / 4
         pitch = np.pi / 5.5

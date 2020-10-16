@@ -121,7 +121,7 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("-c", "--config",
                         help="path to config file",
-                        default="config\\config.yml")
+                        default="config/config.yml")
     args = parser.parse_args()
 
     with open(args.config, "r") as f:
