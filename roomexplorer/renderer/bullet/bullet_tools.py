@@ -4,7 +4,7 @@ import numpy as np
 import pybullet
 import colorsys
 
-ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
+ROOT_PATH = os.path.dirname(os.path.realpath(__file__))
 TEXTURES_PATH = os.path.join(ROOT_PATH, "..", "textures")
 URDF_PATH = os.path.join(ROOT_PATH, "..", "urdf")
 

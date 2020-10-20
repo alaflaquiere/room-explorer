@@ -1,9 +1,5 @@
-import os
-import sys
 import numpy as np
 import matplotlib.pyplot as plt
-
-sys.path.append(os.path.join(os.getcwd(), ".."))
 import roomexplorer
 
 
