@@ -42,6 +42,10 @@ class MobileArm:
         self.fixed_orientation = fixed_orientation
         self.motor_grid_resolution = motor_grid_resolution
 
+    @staticmethod
+    def wrap_angle(a):
+        return np.mod(a + np.pi, 2 * np.pi) - np.pi
+
     def check_motor(self, m):
         assert type(m) is np.ndarray
         if m.ndim == 1:
@@ -50,10 +54,9 @@ class MobileArm:
         if self.fixed_orientation:
             rel_a = self.amps[:4].reshape(1, 4) * m[:, :4]
             total_a = np.sum(rel_a[:, :4], axis=1)
-            total_a = np.fmod(total_a, 2 * np.pi)
-            assert np.logical_or(np.abs(total_a) < 1e-6,
-                                 2 * np.pi - np.abs(total_a) < 1e-6
-                                 ).all(), "the sensor orientation is expected to be fixed to 0"
+            total_a = self.wrap_angle(total_a)
+            assert (np.abs(total_a) < 1e-6).all(),\
+                "the sensor orientation is expected to be fixed to 0"
         return m
 
     def check_shift(self, sh):
@@ -70,8 +73,7 @@ class MobileArm:
         return sh
 
     def get_state(self, m, shift):
-        """Get the position/orientation/aperture of the sensor.
-        """
+        """Get the position/orientation/aperture of the sensor"""
         m = self.check_motor(m)
         shift = self.check_shift(shift)
         # relative angles
@@ -92,7 +94,7 @@ class MobileArm:
                     np.cumsum(rel_a, axis=1))),
             axis=1, keepdims=True)
         yaw = np.sum(rel_a[:, :4], axis=1, keepdims=True)
-        yaw = np.mod(yaw, 2 * np.pi)
+        yaw = self.wrap_angle(yaw)
         aperture = self.amps[4] / 2 * (m[:, [4]] - 1) + 1
         # update the position
         x += shift[:, [0]]
@@ -102,7 +104,7 @@ class MobileArm:
     def fix_orientation(self, m):
         rel_a = self.amps[:4].reshape(1, 4) * m[:, :4]
         rel_a[:, 3] = -np.sum(rel_a[:, :3], axis=1)
-        rel_a[:, 3] = np.mod(rel_a[:, 3] + np.pi, 2 * np.pi) - np.pi
+        rel_a[:, 3] = self.wrap_angle(rel_a[:, 3])
         m[:, 3] = rel_a[:, 3] / self.amps[3]
         return m
 
@@ -186,7 +188,7 @@ class MobileArm:
         ).T
         # fix_orientation if necessary
         if self.fixed_orientation:
-            motor_grid = np.insert(motor_grid, 3, -999, axis=1)  # add a dummy column
+            motor_grid = np.insert(motor_grid, 3, 0., axis=1)  # add a dummy column
             motor_grid = self.fix_orientation(motor_grid)
         # no shift
         shifts = np.zeros((motor_grid.shape[0], 3))
@@ -253,10 +255,7 @@ class MobileArm:
         plt.axis([-r, r, -r, r])
 
     def save(self, directory):
-        """
-        Save the agent on disk.
-        """
-
+        """Save the agent on disk"""
         if not os.path.exists(directory):
             os.makedirs(directory)
 
