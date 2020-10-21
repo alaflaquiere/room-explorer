@@ -93,8 +93,11 @@ class MobileArm:
                 np.sin(
                     np.cumsum(rel_a, axis=1))),
             axis=1, keepdims=True)
-        yaw = np.sum(rel_a[:, :4], axis=1, keepdims=True)
-        yaw = self.wrap_angle(yaw)
+        if self.fixed_orientation:
+            yaw = np.zeros_like(rel_a[:, [0]])  # ensure the angle is precisely 0 and avoid infinitesimal differences
+        else:
+            yaw = np.sum(rel_a[:, :4], axis=1, keepdims=True)
+            yaw = self.wrap_angle(yaw)
         aperture = self.amps[4] / 2 * (m[:, [4]] - 1) + 1
         # update the position
         x += shift[:, [0]]
@@ -222,7 +225,8 @@ class MobileArm:
         x = np.hstack((np.zeros((x.shape[0], 1)), x))
         y = np.hstack((np.zeros((y.shape[0], 1)), y))
 
-        yaw = np.sum(rel_a, axis=1, keepdims=True)
+        yaw = np.sum(rel_a[:, :4], axis=1, keepdims=True)
+        yaw = self.wrap_angle(yaw)
         aperture = self.amps[4] / 2 * (m[:, [4]] - 1) + 1
 
         # update the positions with the shift

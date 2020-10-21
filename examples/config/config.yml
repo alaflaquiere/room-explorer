@@ -17,6 +17,7 @@ environment:
   resolution: 16
 
 dataset:
-  n_runs: 10
+  n_runs: 30
   n_transitions: 100000
-  save_directory: "../.data/temp.hdf5"
+  save_directory: "../.data/FixedOrientationAndAperture.hdf5"
+
