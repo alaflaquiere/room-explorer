@@ -4,13 +4,13 @@ from flatten_dict import flatten
 import roomexplorer
 
 
-def explore(agent, room, mode, k):
+def explore(agent, room, mode, k, progress_bar=True):
     assert mode in ["dynamic_base", "static_base", "hopping_base"]
-    print("mode: {}".format(mode))
+    # print("mode: {}".format(mode))
     motors_t, shifts_t, states_t, motors_tp, shifts_tp, states_tp = \
         agent.generate_random_transitions(mode, k)
-    sensors_t = room.get_sensations(states_t)
-    sensors_tp = room.get_sensations(states_tp)
+    sensors_t = room.get_sensations(states_t, progress_bar)
+    sensors_tp = room.get_sensations(states_tp, progress_bar)
     return motors_t, sensors_t, motors_tp, sensors_tp
 
 

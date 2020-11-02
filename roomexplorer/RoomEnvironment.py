@@ -71,7 +71,7 @@ class Room:
         self._camera_height = 1.6
         self._pitch = 0.62
 
-    def get_sensations(self, states):
+    def get_sensations(self, states, progress_bar=True):
         """
         Returns the sensations at a given set of input positions.
         Inputs:
@@ -86,7 +86,7 @@ class Room:
         N = states.shape[0]
 
         sensations = np.empty((N, self.resolution * self.resolution * 3), dtype=np.uint8)
-        for i, state in enumerate(tqdm(states, desc="Room exploration", mininterval=1)):
+        for i, state in enumerate(tqdm(states, desc="Room exploration", mininterval=1, disable=(not progress_bar))):
             assert (-self.size / 2 < state[0:2]).all() \
                    and (state[0:2] < self.size / 2).all(), \
                    "sensor outside of the room"
