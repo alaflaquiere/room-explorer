@@ -162,7 +162,8 @@ class MobileArm:
             shifts_t = self.generate_random_shifts(k)
             shifts_tp = self.generate_random_shifts(k)
         elif mode is "static_base":
-            shifts_t = np.tile(self.generate_random_shifts(1), (k, 1))
+            # shifts_t = np.tile(self.generate_random_shifts(1), (k, 1))
+            shifts_t = np.zeros((k, 3))
             shifts_tp = shifts_t.copy()
         elif mode is "hopping_base":
             shifts_t = self.generate_random_shifts(k)
